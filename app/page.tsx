@@ -1,9 +1,14 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getData() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
   const [{ data: sports }, { data: leagues }, { data: fixtures }, { data: simulations }] =
     await Promise.all([
       supabase.from('sports').select('*').order('name'),
