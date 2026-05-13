@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getTeamStrength } from '@/lib/wc2026-teams'
-import { createServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,7 +54,11 @@ function mostCommonScore(results: Array<{ home: number; away: number }>) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient()
+  // Use service role key when available so RLS never blocks reads or writes
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   try {
     const { fixtureId, runs = 1000 } = await req.json()
 
@@ -146,9 +150,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    const writeClient = createServerClient()
-
-    const { data: savedSim, error: saveError } = await writeClient
+    const { data: savedSim, error: saveError } = await supabase
       .from('simulations')
       .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative })
       .select()
@@ -159,7 +161,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
     }
 
     if (savedSim) {
-      const { error: runError } = await writeClient
+      const { error: runError } = await supabase
         .from('simulation_runs')
         .insert({
           simulation_id: savedSim.id,
