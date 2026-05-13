@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { SidebarAd } from '@/components/AdSlot'
 
 function SimulationRunner() {
   const params = useSearchParams()
@@ -119,6 +120,8 @@ function SimulationRunner() {
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
       </div>
+
+      <SidebarAd />
 
       {loading && (
         <div className="text-center py-8 text-gray-400 animate-pulse">

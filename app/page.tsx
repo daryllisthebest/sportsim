@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { LeaderboardAd } from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <LeaderboardAd />
+
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-gray-400 mt-1">Sports simulation powered by AI</p>

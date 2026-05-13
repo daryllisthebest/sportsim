@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'SportSim',
   description: 'AI-powered sports match simulation',
+  other: {
+    monetag: 'f9c9ada02fa54e94b1ecb2673d7d183f',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
