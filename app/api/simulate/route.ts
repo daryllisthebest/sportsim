@@ -149,20 +149,33 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    const { data: savedSim } = await (supabase as any)
+    // Prefer service role key for server-side writes so RLS never blocks saves.
+    // Falls back to anon key if the env var is absent.
+    const writeClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY)
+      : supabase
+
+    const { data: savedSim, error: saveError } = await writeClient
       .from('simulations')
-      .insert({ fixture_id: fixtureId, result_json: resultJson, narrative })
+      .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative })
       .select()
       .single()
 
+    if (saveError) {
+      console.error('[simulate] Failed to save simulation:', saveError.message)
+    }
+
     if (savedSim) {
-      await (supabase as any).from('simulation_runs').insert({
-        simulation_id: savedSim.id,
-        runs,
-        home_win_prob: sim.homeWinProb,
-        draw_prob: sim.drawProb,
-        away_win_prob: sim.awayWinProb,
-      })
+      const { error: runError } = await writeClient
+        .from('simulation_runs')
+        .insert({
+          simulation_id: savedSim.id,
+          runs,
+          home_win_prob: sim.homeWinProb,
+          draw_prob: sim.drawProb,
+          away_win_prob: sim.awayWinProb,
+        })
+      if (runError) console.error('[simulate] Failed to save simulation_runs:', runError.message)
     }
 
     return NextResponse.json({ simulation: savedSim, result: resultJson, narrative })

@@ -83,7 +83,9 @@ export default async function SimulationsPage() {
                 </div>
                 <div className="text-right text-xs text-gray-500">
                   <div>{new Date(sim.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  {run && <div className="mt-1">{run.runs?.toLocaleString()} runs</div>}
+                  {(result?.runs ?? run?.runs) && (
+                    <div className="mt-1">{(result?.runs ?? run?.runs).toLocaleString()} runs</div>
+                  )}
                 </div>
               </div>
 
@@ -102,22 +104,20 @@ export default async function SimulationsPage() {
                 </div>
               </div>
 
-              {result?.mostLikelyScore && (
-                <div className="text-sm text-gray-400">
-                  Most likely score: <span className="text-white font-medium">{result.mostLikelyScore}</span>
-                </div>
-              )}
-
-              {sim.narrative && (
-                <details className="group">
-                  <summary className="text-sm text-blue-400 cursor-pointer hover:text-blue-300">
-                    View AI narrative ↓
-                  </summary>
-                  <p className="mt-3 text-sm text-gray-300 leading-relaxed whitespace-pre-line border-t border-gray-800 pt-3">
-                    {sim.narrative}
-                  </p>
-                </details>
-              )}
+              <div className="flex items-center justify-between">
+                {result?.mostLikelyScore && (
+                  <div className="text-sm text-gray-400">
+                    Most likely score:{' '}
+                    <span className="text-white font-medium">{result.mostLikelyScore}</span>
+                  </div>
+                )}
+                <Link
+                  href={`/simulations/${sim.id}`}
+                  className="ml-auto text-xs text-blue-400 hover:text-blue-300 font-medium"
+                >
+                  View full narrative →
+                </Link>
+              </div>
             </div>
           )
         })}
