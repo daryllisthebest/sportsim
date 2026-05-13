@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const API_HOST = 'v3.football.api-sports.io'
 
 const TARGETS = [
-  { label: 'FIFA World Cup 2026',           apiLeagueId: 1,  season: 2026 },
+  { label: 'FIFA World Cup 2022',           apiLeagueId: 1,  season: 2022 },
   { label: 'UEFA Champions League 2024/25', apiLeagueId: 2,  season: 2024 },
   { label: 'Premier League 2024/25',        apiLeagueId: 39, season: 2024 },
 ]
