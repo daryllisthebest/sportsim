@@ -1,21 +1,42 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { LeaderboardAd } from '@/components/AdSlot'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getData() {
-  const [{ data: sports }, { data: leagues }, { data: fixtures }, { data: simulations }] =
-    await Promise.all([
-      supabase.from('sports').select('*').order('name'),
-      supabase.from('leagues').select('*, sports(name)').order('name'),
-      supabase.from('fixtures').select('*').gte('kickoff_at', new Date().toISOString()).order('kickoff_at').limit(5),
-      supabase.from('simulations').select('id'),
-    ])
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[dashboard] Missing Supabase env vars:', { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey })
+    return { sports: [], leagues: [], fixtures: [], simCount: 0 }
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey)
+
+  const [
+    { data: sports, error: sportsErr },
+    { data: leagues, error: leaguesErr },
+    { data: fixtures, error: fixturesErr },
+    { count: simCount, error: simErr },
+  ] = await Promise.all([
+    supabase.from('sports').select('*').order('name'),
+    supabase.from('leagues').select('*, sports(name)').order('name'),
+    supabase.from('fixtures').select('*').gte('kickoff_at', new Date().toISOString()).order('kickoff_at').limit(5),
+    supabase.from('simulations').select('*', { count: 'exact', head: true }),
+  ])
+
+  if (sportsErr)   console.error('[dashboard] sports query error:', sportsErr.message)
+  if (leaguesErr)  console.error('[dashboard] leagues query error:', leaguesErr.message)
+  if (fixturesErr) console.error('[dashboard] fixtures query error:', fixturesErr.message)
+  if (simErr)      console.error('[dashboard] simulations query error:', simErr.message)
+
   return {
     sports: (sports ?? []) as any[],
     leagues: (leagues ?? []) as any[],
     fixtures: (fixtures ?? []) as any[],
-    simCount: simulations?.length ?? 0,
+    simCount: simCount ?? 0,
   }
 }
 
@@ -24,6 +45,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <LeaderboardAd />
+
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-gray-400 mt-1">Sports simulation powered by AI</p>

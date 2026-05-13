@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { getTeamStrength } from '@/lib/wc2026-teams'
 
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+export const dynamic = 'force-dynamic'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -56,6 +54,10 @@ function mostCommonScore(results: Array<{ home: number; away: number }>) {
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
   try {
     const { fixtureId, runs = 1000 } = await req.json()
 
@@ -96,9 +98,13 @@ export async function POST(req: NextRequest) {
       ? (awayPlayers as any[]).filter((p) => p.available).length / Math.max(awayPlayers.length, 1)
       : 1
 
-    // Home advantage factor: 1.1
-    const homeStrength = 50 * homeAvailability * 1.1
-    const awayStrength = 50 * awayAvailability
+    // Use FIFA-ranking-based ratings when available, falling back to 62
+    const homeRating = getTeamStrength(home.name)
+    const awayRating = getTeamStrength(away.name)
+
+    // Scale ratings to a 0–100 base; apply availability and home advantage (1.08)
+    const homeStrength = homeRating * homeAvailability * 1.08
+    const awayStrength = awayRating * awayAvailability
 
     const sim = runMonteCarlo(runs, homeStrength, awayStrength)
 
@@ -107,6 +113,10 @@ export async function POST(req: NextRequest) {
 Match: ${home.name} vs ${away.name}
 League: ${league?.name ?? 'Unknown'}
 ${f.kickoff_at ? `Date: ${new Date(f.kickoff_at).toLocaleDateString()}` : ''}
+
+Team ratings (FIFA ranking-based, out of 100):
+- ${home.name}: ${homeRating} (home advantage applied)
+- ${away.name}: ${awayRating}
 
 Monte Carlo Simulation (${runs.toLocaleString()} runs):
 - ${home.name} win probability: ${(sim.homeWinProb * 100).toFixed(1)}%
@@ -117,7 +127,7 @@ Monte Carlo Simulation (${runs.toLocaleString()} runs):
 ${homePlayers?.length ? `${home.name} squad size: ${homePlayers.length} (${Math.round(homeAvailability * 100)}% available)` : ''}
 ${awayPlayers?.length ? `${away.name} squad size: ${awayPlayers.length} (${Math.round(awayAvailability * 100)}% available)` : ''}
 
-Write an engaging narrative about what this simulation predicts for the match. Mention the key probabilities, potential match dynamics, and what factors could influence the outcome. Keep it factual and analytical.`
+Write an engaging narrative about what this simulation predicts for the match. Mention team strengths, the key probabilities, and what factors could influence the outcome. Keep it factual and analytical.`
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
@@ -135,6 +145,8 @@ Write an engaging narrative about what this simulation predicts for the match. M
       runs,
       homeTeam: home.name,
       awayTeam: away.name,
+      homeRating,
+      awayRating,
     }
 
     const { data: savedSim } = await (supabase as any)

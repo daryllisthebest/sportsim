@@ -7,6 +7,20 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
 
+  async function seedWC2026() {
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/seed-wc2026')
+      const data = await res.json()
+      setResult({ status: res.status, data })
+    } catch (e: any) {
+      setResult({ status: 'network error', data: { error: e.message } })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function triggerSync() {
     setLoading(true)
     setResult(null)
@@ -54,6 +68,20 @@ export default function AdminPage() {
           className="w-full py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
         >
           {loading ? 'Checking…' : 'Check Tables'}
+        </button>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+        <h2 className="font-semibold">Seed WC 2026 Fixtures</h2>
+        <p className="text-xs text-gray-500">
+          One-shot import of all 48 WC 2026 group stage fixtures from openfootball. Safe to re-run — existing records are not duplicated.
+        </p>
+        <button
+          onClick={seedWC2026}
+          disabled={loading}
+          className="w-full py-2 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors"
+        >
+          {loading ? 'Seeding…' : '🌱 Seed WC 2026 Data'}
         </button>
       </div>
 

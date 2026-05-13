@@ -1,7 +1,9 @@
+import { Fragment } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { LeaderboardAd, SidebarAd } from '@/components/AdSlot'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getFixtures() {
   const { data } = await supabase
@@ -48,70 +50,75 @@ export default async function FixturesPage() {
         <p className="text-gray-400 mt-1">{fixtures.length} matches found</p>
       </div>
 
+      <LeaderboardAd />
+
       {fixtures.length === 0 && (
         <div className="text-center py-20 text-gray-500">
           No fixtures in the database yet. Add teams and fixtures via Supabase.
         </div>
       )}
 
-      {Object.entries(grouped).map(([leagueName, leagueFixtures]) => (
-        <div key={leagueName}>
-          <h2 className="text-lg font-semibold text-gray-300 mb-3">{leagueName}</h2>
-          <div className="space-y-2">
-            {leagueFixtures.map((f) => {
-              const home = f.home_team
-              const away = f.away_team
-              const hasResult = f.home_score !== null && f.away_score !== null
-              return (
-                <div
-                  key={f.id}
-                  className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 flex items-center gap-3 justify-end">
-                      {home?.logo_url && (
-                        <img src={home.logo_url} alt={home?.name} className="w-6 h-6 object-contain" />
-                      )}
-                      <span className="font-medium text-white text-right">{home?.name ?? 'TBD'}</span>
-                    </div>
+      {Object.entries(grouped).map(([leagueName, leagueFixtures], leagueIdx) => (
+        <Fragment key={leagueName}>
+          {leagueIdx > 0 && leagueIdx % 2 === 0 && <SidebarAd />}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-300 mb-3">{leagueName}</h2>
+            <div className="space-y-2">
+              {leagueFixtures.map((f, cardIdx) => {
+                const home = f.home_team
+                const away = f.away_team
+                const hasResult = f.home_score !== null && f.away_score !== null
+                return (
+                  <Fragment key={f.id}>
+                    {cardIdx > 0 && cardIdx % 6 === 0 && <SidebarAd />}
+                    <div className="bg-gray-900 border border-gray-800 rounded-xl px-5 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 flex items-center gap-3 justify-end">
+                          {home?.logo_url && (
+                            <img src={home.logo_url} alt={home?.name} className="w-6 h-6 object-contain" />
+                          )}
+                          <span className="font-medium text-white text-right">{home?.name ?? 'TBD'}</span>
+                        </div>
 
-                    <div className="flex flex-col items-center min-w-[80px]">
-                      {hasResult ? (
-                        <span className="text-xl font-bold text-white">
-                          {f.home_score} – {f.away_score}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-500">vs</span>
-                      )}
-                      <div className="mt-1">{statusBadge(f.status)}</div>
-                    </div>
+                        <div className="flex flex-col items-center min-w-[80px]">
+                          {hasResult ? (
+                            <span className="text-xl font-bold text-white">
+                              {f.home_score} – {f.away_score}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-500">vs</span>
+                          )}
+                          <div className="mt-1">{statusBadge(f.status)}</div>
+                        </div>
 
-                    <div className="flex-1 flex items-center gap-3">
-                      {away?.logo_url && (
-                        <img src={away.logo_url} alt={away?.name} className="w-6 h-6 object-contain" />
-                      )}
-                      <span className="font-medium text-white">{away?.name ?? 'TBD'}</span>
-                    </div>
+                        <div className="flex-1 flex items-center gap-3">
+                          {away?.logo_url && (
+                            <img src={away.logo_url} alt={away?.name} className="w-6 h-6 object-contain" />
+                          )}
+                          <span className="font-medium text-white">{away?.name ?? 'TBD'}</span>
+                        </div>
 
-                    <div className="ml-4 flex flex-col items-end gap-1">
-                      {f.kickoff_at && (
-                        <span className="text-xs text-gray-500">
-                          {new Date(f.kickoff_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                        </span>
-                      )}
-                      <Link
-                        href={`/simulations/new?fixture=${f.id}`}
-                        className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full transition-colors"
-                      >
-                        Simulate →
-                      </Link>
+                        <div className="ml-4 flex flex-col items-end gap-1">
+                          {f.kickoff_at && (
+                            <span className="text-xs text-gray-500">
+                              {new Date(f.kickoff_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          )}
+                          <Link
+                            href={`/simulations/new?fixture=${f.id}`}
+                            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full transition-colors"
+                          >
+                            Simulate →
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              )
-            })}
+                  </Fragment>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        </Fragment>
       ))}
     </div>
   )

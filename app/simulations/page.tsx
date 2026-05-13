@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { LeaderboardAd } from '@/components/AdSlot'
 
-export const revalidate = 30
+export const dynamic = 'force-dynamic'
 
 async function getSimulations() {
   const { data } = await supabase
@@ -26,6 +27,8 @@ export default async function SimulationsPage() {
 
   return (
     <div className="space-y-8">
+      <LeaderboardAd />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Simulations</h1>
