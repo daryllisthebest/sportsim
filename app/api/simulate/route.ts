@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getTeamStrength } from '@/lib/wc2026-teams'
+import { createServerClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,10 +54,7 @@ function mostCommonScore(results: Array<{ home: number; away: number }>) {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = createServerClient()
   try {
     const { fixtureId, runs = 1000 } = await req.json()
 
@@ -149,11 +146,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    // Prefer service role key for server-side writes so RLS never blocks saves.
-    // Falls back to anon key if the env var is absent.
-    const writeClient = process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY)
-      : supabase
+    const writeClient = createServerClient()
 
     const { data: savedSim, error: saveError } = await writeClient
       .from('simulations')
