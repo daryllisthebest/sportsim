@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { SidebarAd } from '@/components/AdSlot'
 
 function SimulationRunner() {
   const params = useSearchParams()
@@ -120,6 +121,8 @@ function SimulationRunner() {
         {error && <p className="text-red-400 text-sm">{error}</p>}
       </div>
 
+      <SidebarAd />
+
       {loading && (
         <div className="text-center py-8 text-gray-400 animate-pulse">
           Running Monte Carlo simulation and generating AI narrative…
@@ -130,6 +133,15 @@ function SimulationRunner() {
         <div className="space-y-4">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <h2 className="font-semibold mb-4">Results</h2>
+
+            {result.result.homeRating && (
+              <div className="flex justify-between text-xs text-gray-500 mb-3">
+                <span>Rating: <span className="text-gray-300 font-medium">{result.result.homeRating}</span></span>
+                <span className="text-gray-600">FIFA strength</span>
+                <span>Rating: <span className="text-gray-300 font-medium">{result.result.awayRating}</span></span>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-blue-400">
