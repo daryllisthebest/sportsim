@@ -1,4 +1,3 @@
-// sync endpoint
 import { NextResponse } from 'next/server'
 import { runSync } from '@/lib/sync'
 

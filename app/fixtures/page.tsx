@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getFixtures() {
   const { data } = await supabase
