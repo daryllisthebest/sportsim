@@ -35,10 +35,12 @@ function SimulationRunner() {
     setError('')
     setResult(null)
     try {
+      const id = fixture?.id ?? Number(fixtureId)
+      if (!id) { setError('No fixture selected'); setLoading(false); return }
       const res = await fetch('/api/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fixtureId: Number(fixtureId), runs }),
+        body: JSON.stringify({ fixtureId: id, runs }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
