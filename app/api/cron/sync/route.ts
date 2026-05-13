@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runSync } from '@/lib/sync'
 
+export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // seconds — Vercel Pro allows up to 300
 
 export async function GET(req: NextRequest) {
