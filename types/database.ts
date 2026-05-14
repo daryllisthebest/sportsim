@@ -29,9 +29,9 @@ export interface Database {
         Update: { team_id?: number; name?: string; position?: string | null; available?: boolean; injury_detail?: string | null }
       }
       simulations: {
-        Row: { id: number; fixture_id: number; type: string; result_json: Json; narrative: string | null; created_at: string }
-        Insert: { fixture_id: number; type: string; result_json: Json; narrative?: string | null }
-        Update: { fixture_id?: number; type?: string; result_json?: Json; narrative?: string | null }
+        Row: { id: string; league_id: string | null; fixture_id: string | null; type: 'champion' | 'match' | 'league'; result_json: Json; narrative: string | null; created_at: string }
+        Insert: { league_id?: string | null; fixture_id?: string | null; type: 'champion' | 'match' | 'league'; result_json: Json; narrative?: string | null }
+        Update: { league_id?: string | null; fixture_id?: string | null; type?: 'champion' | 'match' | 'league'; result_json?: Json; narrative?: string | null }
       }
       simulation_runs: {
         Row: { id: number; simulation_id: number; runs: number; home_win_prob: number; draw_prob: number; away_win_prob: number; created_at: string }
