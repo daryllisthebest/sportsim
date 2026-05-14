@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getTeamStrength } from '@/lib/wc2026-teams'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>
+
 export const dynamic = 'force-dynamic'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -57,14 +60,17 @@ export async function POST(req: NextRequest) {
   // Use service role key when available so RLS never blocks reads or writes
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { db: { schema: 'public' } }
   )
   try {
     const { fixtureId, runs = 1000 } = await req.json()
 
+    console.log('[simulate] fixtureId received:', fixtureId, 'type:', typeof fixtureId)
+
     if (!fixtureId) return NextResponse.json({ error: 'fixtureId required' }, { status: 400 })
 
-    const { data: fixture } = await supabase
+    const { data: fixture } = await (supabase as any)
       .from('fixtures')
       .select(`
         *,
@@ -73,7 +79,7 @@ export async function POST(req: NextRequest) {
         league:leagues(id, name)
       `)
       .eq('id', fixtureId)
-      .single()
+      .single() as { data: AnyRecord | null }
 
     if (!fixture) return NextResponse.json({ error: 'Fixture not found' }, { status: 404 })
 
@@ -82,15 +88,15 @@ export async function POST(req: NextRequest) {
     const away = f.away_team
     const league = f.league
 
-    const { data: homePlayers } = await supabase
+    const { data: homePlayers } = await (supabase as any)
       .from('players')
       .select('*')
-      .eq('team_id', home.id)
+      .eq('team_id', home.id) as { data: AnyRecord[] | null }
 
-    const { data: awayPlayers } = await supabase
+    const { data: awayPlayers } = await (supabase as any)
       .from('players')
       .select('*')
-      .eq('team_id', away.id)
+      .eq('team_id', away.id) as { data: AnyRecord[] | null }
 
     const homeAvailability = homePlayers
       ? (homePlayers as any[]).filter((p) => p.available).length / Math.max(homePlayers.length, 1)
@@ -150,18 +156,27 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    const { data: savedSim, error: saveError } = await supabase
+    console.log('[simulate] Attempting simulations insert for fixtureId:', fixtureId)
+    const { data: savedSim, error: saveError } = await (supabase as any)
       .from('simulations')
-      .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative })
+      .insert({ fixture_id: fixtureId, type: 'monte_carlo', result_json: resultJson as AnyRecord, narrative } as AnyRecord)
       .select()
-      .single()
+      .single() as { data: AnyRecord | null; error: { message: string } | null }
 
+    console.log('[simulate] savedSim:', JSON.stringify(savedSim))
     if (saveError) {
-      console.error('[simulate] Failed to save simulation:', saveError.message)
+      console.error('[simulate] saveError full object:', JSON.stringify(saveError, null, 2))
+      console.error('[simulate] saveError message:', (saveError as any).message)
+      console.error('[simulate] saveError code:', (saveError as any).code)
+      console.error('[simulate] saveError details:', (saveError as any).details)
+      console.error('[simulate] saveError hint:', (saveError as any).hint)
+    } else {
+      console.log('[simulate] saveError: null (insert succeeded)')
     }
 
     if (savedSim) {
-      const { error: runError } = await supabase
+      console.log('[simulate] Inserting simulation_runs for simulation_id:', savedSim.id)
+      const { error: runError } = await (supabase as any)
         .from('simulation_runs')
         .insert({
           simulation_id: savedSim.id,
@@ -169,8 +184,14 @@ Write an engaging narrative about what this simulation predicts for the match. M
           home_win_prob: sim.homeWinProb,
           draw_prob: sim.drawProb,
           away_win_prob: sim.awayWinProb,
-        })
-      if (runError) console.error('[simulate] Failed to save simulation_runs:', runError.message)
+        } as AnyRecord) as { error: { message: string } | null }
+      if (runError) {
+        console.error('[simulate] Failed to save simulation_runs:', JSON.stringify(runError))
+      } else {
+        console.log('[simulate] simulation_runs saved successfully')
+      }
+    } else {
+      console.warn('[simulate] Skipping simulation_runs insert — savedSim is null')
     }
 
     return NextResponse.json({ simulation: savedSim, result: resultJson, narrative })
