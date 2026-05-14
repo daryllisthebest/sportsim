@@ -7,18 +7,11 @@ export const dynamic = 'force-dynamic'
 async function getSimulations() {
   const { data, error } = await (createServerClient() as any)
     .from('simulations')
-    .select(`
-      *,
-      fixture:fixtures(
-        id, kickoff_at,
-        home_team:teams!fixtures_home_team_id_fkey(name),
-        away_team:teams!fixtures_away_team_id_fkey(name),
-        league:leagues(name)
-      )
-    `)
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(50)
   if (error) console.error('[simulations] query error:', JSON.stringify(error))
+  console.log('[simulations] count:', data?.length ?? 0)
   return (data ?? []) as any[]
 }
 
@@ -54,7 +47,6 @@ export default async function SimulationsPage() {
 
       <div className="space-y-4">
         {simulations.map((sim) => {
-          const fixture = sim.fixture
           const result = sim.result_json
 
           const homeWin = result?.homeWinProb ?? 0
@@ -68,17 +60,9 @@ export default async function SimulationsPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                    {fixture?.league?.name}
-                  </div>
                   <div className="font-semibold text-white">
-                    {fixture?.home_team?.name ?? 'Home'} vs {fixture?.away_team?.name ?? 'Away'}
+                    {result?.homeTeam ?? 'Home'} vs {result?.awayTeam ?? 'Away'}
                   </div>
-                  {fixture?.kickoff_at && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(fixture.kickoff_at).toLocaleDateString()}
-                    </div>
-                  )}
                 </div>
                 <div className="text-right text-xs text-gray-500">
                   <div>{new Date(sim.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
