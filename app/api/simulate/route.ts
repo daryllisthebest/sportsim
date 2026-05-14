@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
   try {
     const { fixtureId, runs = 1000 } = await req.json()
 
+    console.log('[simulate] fixtureId received:', fixtureId, 'type:', typeof fixtureId)
+
     if (!fixtureId) return NextResponse.json({ error: 'fixtureId required' }, { status: 400 })
 
     const { data: fixture } = await (supabase as any)
@@ -153,17 +155,22 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
+    console.log('[simulate] Attempting simulations insert for fixtureId:', fixtureId)
     const { data: savedSim, error: saveError } = await (supabase as any)
       .from('simulations')
       .insert({ fixture_id: fixtureId, result_json: resultJson as AnyRecord, narrative } as AnyRecord)
       .select()
       .single() as { data: AnyRecord | null; error: { message: string } | null }
 
+    console.log('[simulate] savedSim:', JSON.stringify(savedSim))
+    console.log('[simulate] saveError:', saveError ? JSON.stringify(saveError) : null)
+
     if (saveError) {
       console.error('[simulate] Failed to save simulation:', saveError.message)
     }
 
     if (savedSim) {
+      console.log('[simulate] Inserting simulation_runs for simulation_id:', savedSim.id)
       const { error: runError } = await (supabase as any)
         .from('simulation_runs')
         .insert({
@@ -173,7 +180,13 @@ Write an engaging narrative about what this simulation predicts for the match. M
           draw_prob: sim.drawProb,
           away_win_prob: sim.awayWinProb,
         } as AnyRecord) as { error: { message: string } | null }
-      if (runError) console.error('[simulate] Failed to save simulation_runs:', runError.message)
+      if (runError) {
+        console.error('[simulate] Failed to save simulation_runs:', JSON.stringify(runError))
+      } else {
+        console.log('[simulate] simulation_runs saved successfully')
+      }
+    } else {
+      console.warn('[simulate] Skipping simulation_runs insert — savedSim is null')
     }
 
     return NextResponse.json({ simulation: savedSim, result: resultJson, narrative })
