@@ -159,7 +159,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
     console.log('[simulate] Attempting simulations insert for fixtureId:', fixtureId)
     const { data: savedSim, error: saveError } = await (supabase as any)
       .from('simulations')
-      .insert({ fixture_id: fixtureId, result_json: resultJson as AnyRecord, narrative } as AnyRecord)
+      .insert({ fixture_id: fixtureId, type: 'monte_carlo', result_json: resultJson as AnyRecord, narrative } as AnyRecord)
       .select()
       .single() as { data: AnyRecord | null; error: { message: string } | null }
 
