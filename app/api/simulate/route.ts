@@ -60,7 +60,8 @@ export async function POST(req: NextRequest) {
   // Use service role key when available so RLS never blocks reads or writes
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { db: { schema: 'public' } }
   )
   try {
     const { fixtureId, runs = 1000 } = await req.json()
@@ -163,10 +164,14 @@ Write an engaging narrative about what this simulation predicts for the match. M
       .single() as { data: AnyRecord | null; error: { message: string } | null }
 
     console.log('[simulate] savedSim:', JSON.stringify(savedSim))
-    console.log('[simulate] saveError:', saveError ? JSON.stringify(saveError) : null)
-
     if (saveError) {
-      console.error('[simulate] Failed to save simulation:', saveError.message)
+      console.error('[simulate] saveError full object:', JSON.stringify(saveError, null, 2))
+      console.error('[simulate] saveError message:', (saveError as any).message)
+      console.error('[simulate] saveError code:', (saveError as any).code)
+      console.error('[simulate] saveError details:', (saveError as any).details)
+      console.error('[simulate] saveError hint:', (saveError as any).hint)
+    } else {
+      console.log('[simulate] saveError: null (insert succeeded)')
     }
 
     if (savedSim) {
