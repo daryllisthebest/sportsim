@@ -5,7 +5,7 @@ import { LeaderboardAd } from '@/components/AdSlot'
 export const dynamic = 'force-dynamic'
 
 async function getSimulations() {
-  const { data } = await createServerClient()
+  const { data, error } = await (createServerClient() as any)
     .from('simulations')
     .select(`
       *,
@@ -14,11 +14,11 @@ async function getSimulations() {
         home_team:teams!fixtures_home_team_id_fkey(name),
         away_team:teams!fixtures_away_team_id_fkey(name),
         league:leagues(name)
-      ),
-      simulation_runs(runs, home_win_prob, draw_prob, away_win_prob)
+      )
     `)
     .order('created_at', { ascending: false })
     .limit(50)
+  if (error) console.error('[simulations] query error:', JSON.stringify(error))
   return (data ?? []) as any[]
 }
 
@@ -56,11 +56,10 @@ export default async function SimulationsPage() {
         {simulations.map((sim) => {
           const fixture = sim.fixture
           const result = sim.result_json
-          const run = sim.simulation_runs?.[0]
 
-          const homeWin = result?.homeWinProb ?? run?.home_win_prob ?? 0
-          const draw = result?.drawProb ?? run?.draw_prob ?? 0
-          const awayWin = result?.awayWinProb ?? run?.away_win_prob ?? 0
+          const homeWin = result?.homeWinProb ?? 0
+          const draw = result?.drawProb ?? 0
+          const awayWin = result?.awayWinProb ?? 0
 
           return (
             <div
@@ -83,8 +82,8 @@ export default async function SimulationsPage() {
                 </div>
                 <div className="text-right text-xs text-gray-500">
                   <div>{new Date(sim.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  {(result?.runs ?? run?.runs) && (
-                    <div className="mt-1">{(result?.runs ?? run?.runs).toLocaleString()} runs</div>
+                  {result?.runs && (
+                    <div className="mt-1">{result.runs.toLocaleString()} runs</div>
                   )}
                 </div>
               </div>
