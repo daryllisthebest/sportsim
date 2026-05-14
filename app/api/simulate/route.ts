@@ -54,9 +54,10 @@ function mostCommonScore(results: Array<{ home: number; away: number }>) {
 }
 
 export async function POST(req: NextRequest) {
+  // Use service role key when available so RLS never blocks reads or writes
   const supabase = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
   try {
     const { fixtureId, runs = 1000 } = await req.json()
@@ -149,13 +150,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    // Prefer service role key for server-side writes so RLS never blocks saves.
-    // Falls back to anon key if the env var is absent.
-    const writeClient = process.env.SUPABASE_SERVICE_ROLE_KEY
-      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY)
-      : supabase
-
-    const { data: savedSim, error: saveError } = await writeClient
+    const { data: savedSim, error: saveError } = await supabase
       .from('simulations')
       .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative })
       .select()
@@ -166,7 +161,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
     }
 
     if (savedSim) {
-      const { error: runError } = await writeClient
+      const { error: runError } = await supabase
         .from('simulation_runs')
         .insert({
           simulation_id: savedSim.id,

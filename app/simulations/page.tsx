@@ -1,11 +1,11 @@
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { LeaderboardAd } from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 
 async function getSimulations() {
-  const { data } = await supabase
+  const { data } = await createServerClient()
     .from('simulations')
     .select(`
       *,
