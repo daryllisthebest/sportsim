@@ -17,7 +17,7 @@ async function getSim(id: string) {
       ),
       simulation_runs(runs, home_win_prob, draw_prob, away_win_prob)
     `)
-    .eq('id', id)
+    .eq('id', Number(id))
     .single()
   return data as any
 }
