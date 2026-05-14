@@ -152,7 +152,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
 
     const { data: savedSim, error: saveError } = await supabase
       .from('simulations')
-      .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative })
+      .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative } as any)
       .select()
       .single()
 
@@ -169,7 +169,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
           home_win_prob: sim.homeWinProb,
           draw_prob: sim.drawProb,
           away_win_prob: sim.awayWinProb,
-        })
+        } as any)
       if (runError) console.error('[simulate] Failed to save simulation_runs:', runError.message)
     }
 
