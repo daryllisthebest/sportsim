@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { getTeamStrength } from '@/lib/wc2026-teams'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>
+
 export const dynamic = 'force-dynamic'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     if (!fixtureId) return NextResponse.json({ error: 'fixtureId required' }, { status: 400 })
 
-    const { data: fixture } = await supabase
+    const { data: fixture } = await (supabase as any)
       .from('fixtures')
       .select(`
         *,
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
         league:leagues(id, name)
       `)
       .eq('id', fixtureId)
-      .single()
+      .single() as { data: AnyRecord | null }
 
     if (!fixture) return NextResponse.json({ error: 'Fixture not found' }, { status: 404 })
 
@@ -82,15 +85,15 @@ export async function POST(req: NextRequest) {
     const away = f.away_team
     const league = f.league
 
-    const { data: homePlayers } = await supabase
+    const { data: homePlayers } = await (supabase as any)
       .from('players')
       .select('*')
-      .eq('team_id', home.id)
+      .eq('team_id', home.id) as { data: AnyRecord[] | null }
 
-    const { data: awayPlayers } = await supabase
+    const { data: awayPlayers } = await (supabase as any)
       .from('players')
       .select('*')
-      .eq('team_id', away.id)
+      .eq('team_id', away.id) as { data: AnyRecord[] | null }
 
     const homeAvailability = homePlayers
       ? (homePlayers as any[]).filter((p) => p.available).length / Math.max(homePlayers.length, 1)
@@ -150,18 +153,18 @@ Write an engaging narrative about what this simulation predicts for the match. M
       awayRating,
     }
 
-    const { data: savedSim, error: saveError } = await supabase
+    const { data: savedSim, error: saveError } = await (supabase as any)
       .from('simulations')
-      .insert({ fixture_id: fixtureId, result_json: resultJson as any, narrative } as any)
+      .insert({ fixture_id: fixtureId, result_json: resultJson as AnyRecord, narrative } as AnyRecord)
       .select()
-      .single()
+      .single() as { data: AnyRecord | null; error: { message: string } | null }
 
     if (saveError) {
       console.error('[simulate] Failed to save simulation:', saveError.message)
     }
 
     if (savedSim) {
-      const { error: runError } = await supabase
+      const { error: runError } = await (supabase as any)
         .from('simulation_runs')
         .insert({
           simulation_id: savedSim.id,
@@ -169,7 +172,7 @@ Write an engaging narrative about what this simulation predicts for the match. M
           home_win_prob: sim.homeWinProb,
           draw_prob: sim.drawProb,
           away_win_prob: sim.awayWinProb,
-        } as any)
+        } as AnyRecord) as { error: { message: string } | null }
       if (runError) console.error('[simulate] Failed to save simulation_runs:', runError.message)
     }
 
