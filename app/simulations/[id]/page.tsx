@@ -5,7 +5,7 @@ import { createServerClient } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 async function getSim(id: string) {
-  const { data } = await createServerClient()
+  const { data, error } = await (createServerClient() as any)
     .from('simulations')
     .select(`
       *,
@@ -14,11 +14,11 @@ async function getSim(id: string) {
         home_team:teams!fixtures_home_team_id_fkey(name),
         away_team:teams!fixtures_away_team_id_fkey(name),
         league:leagues(name)
-      ),
-      simulation_runs(runs, home_win_prob, draw_prob, away_win_prob)
+      )
     `)
-    .eq('id', Number(id))
+    .eq('id', id)
     .single()
+  if (error) console.error('[simulation/detail] query error:', JSON.stringify(error))
   return data as any
 }
 
@@ -34,12 +34,11 @@ export default async function SimulationDetailPage({
 
   const fixture = sim.fixture
   const result = sim.result_json
-  const run = sim.simulation_runs?.[0]
 
-  const homeWin = result?.homeWinProb ?? run?.home_win_prob ?? 0
-  const draw = result?.drawProb ?? run?.draw_prob ?? 0
-  const awayWin = result?.awayWinProb ?? run?.away_win_prob ?? 0
-  const runs = result?.runs ?? run?.runs
+  const homeWin = result?.homeWinProb ?? 0
+  const draw = result?.drawProb ?? 0
+  const awayWin = result?.awayWinProb ?? 0
+  const runs = result?.runs
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
