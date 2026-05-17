@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase'
+import VerdictBadge from '@/components/VerdictBadge'
+import ShareButton from '@/components/ShareButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,8 +70,16 @@ export default async function SimulationDetailPage({
         </div>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="font-semibold">Predicted Outcome</h2>
+      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+        <VerdictBadge
+          homeTeam={result?.homeTeam ?? fixture?.home_team?.name ?? 'Home'}
+          awayTeam={result?.awayTeam ?? fixture?.away_team?.name ?? 'Away'}
+          homeWin={homeWin}
+          awayWin={awayWin}
+          draw={draw}
+        />
+
+        <div className="p-6 space-y-4">
 
         {result?.homeRating && (
           <div className="flex justify-between text-xs text-gray-500">
@@ -111,6 +121,27 @@ export default async function SimulationDetailPage({
             <span className="text-white font-semibold">{result.mostLikelyScore}</span>
           </div>
         )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+          <ShareButton
+            homeTeam={result?.homeTeam ?? 'Home'}
+            awayTeam={result?.awayTeam ?? 'Away'}
+            homeWin={homeWin}
+            awayWin={awayWin}
+            draw={draw}
+            mostLikelyScore={result?.mostLikelyScore}
+          />
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${result?.homeTeam ?? ''} vs ${result?.awayTeam ?? ''} FIFA World Cup highlights`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
+          >
+            ▶ Watch Highlights
+          </a>
+        </div>
+
+        </div>
       </div>
 
       {sim.narrative && (
