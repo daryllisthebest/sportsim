@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { SidebarAd } from '@/components/AdSlot'
+import VerdictBadge from '@/components/VerdictBadge'
+import ShareButton from '@/components/ShareButton'
 
 function SimulationRunner() {
   const params = useSearchParams()
@@ -133,56 +135,66 @@ function SimulationRunner() {
 
       {result && (
         <div className="space-y-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <h2 className="font-semibold mb-4">Results</h2>
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <VerdictBadge
+              homeTeam={result.result.homeTeam}
+              awayTeam={result.result.awayTeam}
+              homeWin={result.result.homeWinProb}
+              awayWin={result.result.awayWinProb}
+              draw={result.result.drawProb}
+            />
 
-            {result.result.homeRating && (
-              <div className="flex justify-between text-xs text-gray-500 mb-3">
-                <span>Rating: <span className="text-gray-300 font-medium">{result.result.homeRating}</span></span>
-                <span className="text-gray-600">FIFA strength</span>
-                <span>Rating: <span className="text-gray-300 font-medium">{result.result.awayRating}</span></span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold text-blue-400">
-                  {(result.result.homeWinProb * 100).toFixed(1)}%
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-blue-400">
+                    {(result.result.homeWinProb * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{result.result.homeTeam} Win</div>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">{result.result.homeTeam} Win</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-gray-400">
-                  {(result.result.drawProb * 100).toFixed(1)}%
+                <div>
+                  <div className="text-2xl font-bold text-gray-400">
+                    {(result.result.drawProb * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">Draw</div>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">Draw</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-orange-400">
-                  {(result.result.awayWinProb * 100).toFixed(1)}%
+                <div>
+                  <div className="text-2xl font-bold text-orange-400">
+                    {(result.result.awayWinProb * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">{result.result.awayTeam} Win</div>
                 </div>
-                <div className="text-xs text-gray-400 mt-1">{result.result.awayTeam} Win</div>
               </div>
-            </div>
 
-            <div className="mt-4 h-3 rounded-full overflow-hidden flex">
-              <div
-                className="bg-blue-600 transition-all"
-                style={{ width: `${result.result.homeWinProb * 100}%` }}
-              />
-              <div
-                className="bg-gray-600 transition-all"
-                style={{ width: `${result.result.drawProb * 100}%` }}
-              />
-              <div
-                className="bg-orange-600 transition-all"
-                style={{ width: `${result.result.awayWinProb * 100}%` }}
-              />
-            </div>
+              <div className="h-3 rounded-full overflow-hidden flex">
+                <div className="bg-blue-600 transition-all" style={{ width: `${result.result.homeWinProb * 100}%` }} />
+                <div className="bg-gray-600 transition-all" style={{ width: `${result.result.drawProb * 100}%` }} />
+                <div className="bg-orange-600 transition-all" style={{ width: `${result.result.awayWinProb * 100}%` }} />
+              </div>
 
-            <div className="mt-4 text-center text-sm text-gray-400">
-              Most likely scoreline:{' '}
-              <span className="text-white font-semibold">{result.result.mostLikelyScore}</span>
+              <div className="text-center text-sm text-gray-400">
+                Most likely scoreline:{' '}
+                <span className="text-white font-semibold">{result.result.mostLikelyScore}</span>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-gray-800">
+                <ShareButton
+                  homeTeam={result.result.homeTeam}
+                  awayTeam={result.result.awayTeam}
+                  homeWin={result.result.homeWinProb}
+                  awayWin={result.result.awayWinProb}
+                  draw={result.result.drawProb}
+                  mostLikelyScore={result.result.mostLikelyScore}
+                />
+                <a
+                  href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${result.result.homeTeam} vs ${result.result.awayTeam} FIFA World Cup highlights`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  ▶ Watch Highlights
+                </a>
+              </div>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { LeaderboardAd } from '@/components/AdSlot'
+import { getVerdict } from '@/components/VerdictBadge'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +53,7 @@ export default async function SimulationsPage() {
           const homeWin = result?.homeWinProb ?? 0
           const draw = result?.drawProb ?? 0
           const awayWin = result?.awayWinProb ?? 0
+          const verdict = getVerdict(result?.homeTeam ?? 'Home', result?.awayTeam ?? 'Away', homeWin, awayWin, draw)
 
           return (
             <div
@@ -62,6 +64,9 @@ export default async function SimulationsPage() {
                 <div>
                   <div className="font-semibold text-white">
                     {result?.homeTeam ?? 'Home'} vs {result?.awayTeam ?? 'Away'}
+                  </div>
+                  <div className={`text-xs font-medium mt-1 ${verdict.color}`}>
+                    {verdict.emoji} {verdict.label}
                   </div>
                 </div>
                 <div className="text-right text-xs text-gray-500">
