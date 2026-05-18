@@ -17,8 +17,8 @@ function runMonteCarlo(runs: number, homeStrength: number, awayStrength: number)
 
   for (let i = 0; i < runs; i++) {
     const total = homeStrength + awayStrength
-    const homeExpected = (homeStrength / total) * 2.5
-    const awayExpected = (awayStrength / total) * 2.5
+    const homeExpected = total > 0 ? (homeStrength / total) * 2.5 : 1.25
+    const awayExpected = total > 0 ? (awayStrength / total) * 2.5 : 1.25
 
     // Poisson-approximate using sum of uniforms
     const homeGoals = poissonSample(homeExpected)
@@ -98,11 +98,11 @@ export async function POST(req: NextRequest) {
       .select('*')
       .eq('team_id', away.id) as { data: AnyRecord[] | null }
 
-    const homeAvailability = homePlayers
-      ? (homePlayers as any[]).filter((p) => p.available).length / Math.max(homePlayers.length, 1)
+    const homeAvailability = homePlayers && homePlayers.length > 0
+      ? (homePlayers as any[]).filter((p) => p.available).length / homePlayers.length
       : 1
-    const awayAvailability = awayPlayers
-      ? (awayPlayers as any[]).filter((p) => p.available).length / Math.max(awayPlayers.length, 1)
+    const awayAvailability = awayPlayers && awayPlayers.length > 0
+      ? (awayPlayers as any[]).filter((p) => p.available).length / awayPlayers.length
       : 1
 
     // Use FIFA-ranking-based ratings when available, falling back to 62
