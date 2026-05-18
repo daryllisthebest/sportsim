@@ -1,24 +1,18 @@
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { LeaderboardAd } from '@/components/AdSlot'
+import { getVerdict } from '@/components/VerdictBadge'
 
 export const dynamic = 'force-dynamic'
 
 async function getSimulations() {
-  const { data } = await supabase
+  const { data, error } = await (createServerClient() as any)
     .from('simulations')
-    .select(`
-      *,
-      fixture:fixtures(
-        id, kickoff_at,
-        home_team:teams!fixtures_home_team_id_fkey(name),
-        away_team:teams!fixtures_away_team_id_fkey(name),
-        league:leagues(name)
-      ),
-      simulation_runs(runs, home_win_prob, draw_prob, away_win_prob)
-    `)
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(50)
+  if (error) console.error('[simulations] query error:', JSON.stringify(error))
+  console.log('[simulations] count:', data?.length ?? 0)
   return (data ?? []) as any[]
 }
 
@@ -54,13 +48,12 @@ export default async function SimulationsPage() {
 
       <div className="space-y-4">
         {simulations.map((sim) => {
-          const fixture = sim.fixture
           const result = sim.result_json
-          const run = sim.simulation_runs?.[0]
 
-          const homeWin = result?.homeWinProb ?? run?.home_win_prob ?? 0
-          const draw = result?.drawProb ?? run?.draw_prob ?? 0
-          const awayWin = result?.awayWinProb ?? run?.away_win_prob ?? 0
+          const homeWin = result?.homeWinProb ?? 0
+          const draw = result?.drawProb ?? 0
+          const awayWin = result?.awayWinProb ?? 0
+          const verdict = getVerdict(result?.homeTeam ?? 'Home', result?.awayTeam ?? 'Away', homeWin, awayWin, draw)
 
           return (
             <div
@@ -69,21 +62,18 @@ export default async function SimulationsPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                    {fixture?.league?.name}
-                  </div>
                   <div className="font-semibold text-white">
-                    {fixture?.home_team?.name ?? 'Home'} vs {fixture?.away_team?.name ?? 'Away'}
+                    {result?.homeTeam ?? 'Home'} vs {result?.awayTeam ?? 'Away'}
                   </div>
-                  {fixture?.kickoff_at && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(fixture.kickoff_at).toLocaleDateString()}
-                    </div>
-                  )}
+                  <div className={`text-xs font-medium mt-1 ${verdict.color}`}>
+                    {verdict.emoji} {verdict.label}
+                  </div>
                 </div>
                 <div className="text-right text-xs text-gray-500">
                   <div>{new Date(sim.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</div>
-                  {run && <div className="mt-1">{run.runs?.toLocaleString()} runs</div>}
+                  {result?.runs && (
+                    <div className="mt-1">{result.runs.toLocaleString()} runs</div>
+                  )}
                 </div>
               </div>
 
@@ -102,22 +92,20 @@ export default async function SimulationsPage() {
                 </div>
               </div>
 
-              {result?.mostLikelyScore && (
-                <div className="text-sm text-gray-400">
-                  Most likely score: <span className="text-white font-medium">{result.mostLikelyScore}</span>
-                </div>
-              )}
-
-              {sim.narrative && (
-                <details className="group">
-                  <summary className="text-sm text-blue-400 cursor-pointer hover:text-blue-300">
-                    View AI narrative ↓
-                  </summary>
-                  <p className="mt-3 text-sm text-gray-300 leading-relaxed whitespace-pre-line border-t border-gray-800 pt-3">
-                    {sim.narrative}
-                  </p>
-                </details>
-              )}
+              <div className="flex items-center justify-between">
+                {result?.mostLikelyScore && (
+                  <div className="text-sm text-gray-400">
+                    Most likely score:{' '}
+                    <span className="text-white font-medium">{result.mostLikelyScore}</span>
+                  </div>
+                )}
+                <Link
+                  href={`/simulations/${sim.id}`}
+                  className="ml-auto text-xs text-blue-400 hover:text-blue-300 font-medium"
+                >
+                  View full narrative →
+                </Link>
+              </div>
             </div>
           )
         })}
