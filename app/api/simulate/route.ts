@@ -15,11 +15,14 @@ function runMonteCarlo(runs: number, homeStrength: number, awayStrength: number)
   let homeWins = 0, draws = 0, awayWins = 0
   const results: Array<{ home: number; away: number }> = []
 
-  for (let i = 0; i < runs; i++) {
-    const total = homeStrength + awayStrength
-    const homeExpected = total > 0 ? (homeStrength / total) * 2.5 : 1.25
-    const awayExpected = total > 0 ? (awayStrength / total) * 2.5 : 1.25
+  const total = homeStrength + awayStrength
+  // Bigger strength gap → more total goals (stronger team dominates scoreline)
+  const spread = total > 0 ? Math.abs(homeStrength - awayStrength) / total : 0
+  const totalGoals = total > 0 ? 2.5 + spread * 3.0 : 2.5
+  const homeExpected = total > 0 ? (homeStrength / total) * totalGoals : totalGoals / 2
+  const awayExpected = total > 0 ? (awayStrength / total) * totalGoals : totalGoals / 2
 
+  for (let i = 0; i < runs; i++) {
     // Poisson-approximate using sum of uniforms
     const homeGoals = poissonSample(homeExpected)
     const awayGoals = poissonSample(awayExpected)
@@ -172,26 +175,6 @@ Write an engaging narrative about what this simulation predicts for the match. M
       console.error('[simulate] saveError hint:', (saveError as any).hint)
     } else {
       console.log('[simulate] saveError: null (insert succeeded)')
-    }
-
-    if (savedSim) {
-      console.log('[simulate] Inserting simulation_runs for simulation_id:', savedSim.id)
-      const { error: runError } = await (supabase as any)
-        .from('simulation_runs')
-        .insert({
-          simulation_id: savedSim.id,
-          runs,
-          home_win_prob: sim.homeWinProb,
-          draw_prob: sim.drawProb,
-          away_win_prob: sim.awayWinProb,
-        } as AnyRecord) as { error: { message: string } | null }
-      if (runError) {
-        console.error('[simulate] Failed to save simulation_runs:', JSON.stringify(runError))
-      } else {
-        console.log('[simulate] simulation_runs saved successfully')
-      }
-    } else {
-      console.warn('[simulate] Skipping simulation_runs insert — savedSim is null')
     }
 
     return NextResponse.json({ simulation: savedSim, result: resultJson, narrative })
