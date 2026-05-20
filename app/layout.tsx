@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
         <footer className="border-t border-gray-800 mt-12 py-6 text-center text-xs text-gray-600 px-4">
-          SportSim is for entertainment purposes only. All simulations are fictional and statistical in nature.
+          SportSim is for entertainment purposes only. Simulation results may not predict outcomes with 100% accuracy as circumstances change from time to time, such as weather conditions, player injuries, and team form.
           We do not encourage, promote, or facilitate gambling in any form.
         </footer>
       </body>
