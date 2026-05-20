@@ -174,26 +174,6 @@ Write an engaging narrative about what this simulation predicts for the match. M
       console.log('[simulate] saveError: null (insert succeeded)')
     }
 
-    if (savedSim) {
-      console.log('[simulate] Inserting simulation_runs for simulation_id:', savedSim.id)
-      const { error: runError } = await (supabase as any)
-        .from('simulation_runs')
-        .insert({
-          simulation_id: savedSim.id,
-          runs,
-          home_win_prob: sim.homeWinProb,
-          draw_prob: sim.drawProb,
-          away_win_prob: sim.awayWinProb,
-        } as AnyRecord) as { error: { message: string } | null }
-      if (runError) {
-        console.error('[simulate] Failed to save simulation_runs:', JSON.stringify(runError))
-      } else {
-        console.log('[simulate] simulation_runs saved successfully')
-      }
-    } else {
-      console.warn('[simulate] Skipping simulation_runs insert — savedSim is null')
-    }
-
     return NextResponse.json({ simulation: savedSim, result: resultJson, narrative })
   } catch (err) {
     console.error(err)

@@ -19,9 +19,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: `(function(s){s.dataset.zone='11001218',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))` }} />
       </head>
-      <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen`}>
+      <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen pb-20`}>
         <Nav />
         <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
+        <footer className="border-t border-gray-800 mt-12 py-6 text-center text-xs text-gray-600 px-4">
+          SportSim is for entertainment purposes only. Simulation results may not predict outcomes with 100% accuracy as circumstances change from time to time, such as weather conditions, player injuries, and team form.
+          We do not encourage, promote, or facilitate gambling in any form.
+        </footer>
       </body>
     </html>
   )
