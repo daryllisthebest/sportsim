@@ -19,7 +19,7 @@ interface OFMatch {
 interface GroupData {
   name: string
   teams: string[]
-  matches: Array<OFMatch & { fixtureId?: number; dbScore?: [number, number] | null }>
+  matches: Array<OFMatch & { fixtureId?: string; dbScore?: [number, number] | null; groupName: string }>
 }
 
 interface Standing {
@@ -34,7 +34,6 @@ interface Standing {
 }
 
 async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }> {
-  // Fetch openfootball JSON for group assignments
   let ofMatches: OFMatch[] = []
   try {
     const res = await fetch(OPENFOOTBALL_URL, { next: { revalidate: 3600 } } as RequestInit)
@@ -46,17 +45,12 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
     // network failure — fall through with empty data
   }
 
-  // Build group map from openfootball
   const groupMap = new Map<string, { teams: Set<string>; matches: OFMatch[] }>()
   for (const m of ofMatches) {
     if (!m.group || !m.team1 || !m.team2) continue
     if (
-      m.team1.includes('Winner') ||
-      m.team1.includes('Loser') ||
-      m.team1.includes('Group') ||
-      m.team2.includes('Winner') ||
-      m.team2.includes('Loser') ||
-      m.team2.includes('Group')
+      m.team1.includes('Winner') || m.team1.includes('Loser') || m.team1.includes('Group') ||
+      m.team2.includes('Winner') || m.team2.includes('Loser') || m.team2.includes('Group')
     ) continue
     if (!groupMap.has(m.group)) groupMap.set(m.group, { teams: new Set(), matches: [] })
     const g = groupMap.get(m.group)!
@@ -65,13 +59,9 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
     g.matches.push(m)
   }
 
-  // Query Supabase for any stored results
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  const fixtureMap = new Map<
-    string,
-    { id: number; home_score: number | null; away_score: number | null }
-  >()
+  const fixtureMap = new Map<string, { id: string; home_score: number | null; away_score: number | null }>()
   let seeded = false
 
   if (supabaseUrl && supabaseKey) {
@@ -85,9 +75,7 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
       seeded = true
       const { data: fixtures } = await supabase
         .from('fixtures')
-        .select(
-          'id, home_score, away_score, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)'
-        )
+        .select('id, home_score, away_score, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
         .eq('league_id', league.id)
       for (const f of fixtures ?? []) {
         const key = `${(f as any).home_team?.name}:${(f as any).away_team?.name}`
@@ -96,9 +84,7 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
     }
   }
 
-  // Merge openfootball + DB data
   const sortedGroups = [...groupMap.entries()].sort(([a], [b]) => a.localeCompare(b))
-
   const groups: GroupData[] = sortedGroups.map(([groupName, { teams, matches }]) => ({
     name: groupName,
     teams: [...teams],
@@ -108,6 +94,7 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
         const db = fixtureMap.get(`${m.team1}:${m.team2}`)
         return {
           ...m,
+          groupName,
           fixtureId: db?.id,
           dbScore:
             db && db.home_score !== null && db.away_score !== null
@@ -140,10 +127,7 @@ function computeStandings(teams: string[], matches: GroupData['matches']): Stand
     else { h.drawn++; h.pts++; a.drawn++; a.pts++ }
   }
   return Object.values(table).sort(
-    (a, b) =>
-      b.pts - a.pts ||
-      b.gf - b.ga - (a.gf - a.ga) ||
-      b.gf - a.gf
+    (a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf
   )
 }
 
@@ -156,12 +140,24 @@ function qualBadge(rank: number) {
 export default async function WC2026Page() {
   const { groups, seeded } = await getGroupData()
 
+  // Flatten all matches and group by date
+  const allMatches = groups.flatMap((g) => g.matches)
+  const matchesByDate = new Map<string, typeof allMatches>()
+  for (const m of allMatches) {
+    if (!matchesByDate.has(m.date)) matchesByDate.set(m.date, [])
+    matchesByDate.get(m.date)!.push(m)
+  }
+  const sortedDates = [...matchesByDate.keys()].sort()
+
   return (
     <div className="space-y-10">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">🏆 FIFA World Cup 2026</h1>
-          <p className="text-gray-400 mt-1">Group stage — 12 groups, 48 teams</p>
+          <p className="text-gray-400 mt-1">
+            Group stage — 12 groups, 48 teams
+            {allMatches.length > 0 && ` · ${allMatches.length} fixtures`}
+          </p>
         </div>
         {!seeded && (
           <Link
@@ -176,104 +172,116 @@ export default async function WC2026Page() {
       {groups.length === 0 && (
         <div className="text-center py-20 space-y-4">
           <p className="text-gray-500">
-            No group data available. Run{' '}
-            <Link href="/admin" className="text-blue-400 underline">
-              /api/seed-wc2026
-            </Link>{' '}
-            to populate fixtures.
+            No fixture data available. Go to{' '}
+            <Link href="/admin" className="text-blue-400 underline">/admin</Link>{' '}
+            and click "Seed WC 2026 Data".
           </p>
         </div>
       )}
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {groups.map((group) => {
-          const standings = computeStandings(group.teams, group.matches)
-          const anyResults = group.matches.some((m) => m.dbScore)
-
-          return (
-            <div key={group.name} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-              <div className="px-5 py-3 bg-gray-800/60 flex items-center justify-between">
-                <h2 className="font-bold text-white">{group.name}</h2>
-                {!anyResults && (
-                  <span className="text-xs text-gray-500">Upcoming</span>
-                )}
-              </div>
-
-              {/* Standings table */}
-              <div className="px-5 py-3">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-xs text-gray-500 border-b border-gray-800">
-                      <th className="text-left pb-2 font-medium">Team</th>
-                      <th className="text-center pb-2 font-medium w-6">P</th>
-                      <th className="text-center pb-2 font-medium w-6">W</th>
-                      <th className="text-center pb-2 font-medium w-6">D</th>
-                      <th className="text-center pb-2 font-medium w-6">L</th>
-                      <th className="text-center pb-2 font-medium w-10">GD</th>
-                      <th className="text-center pb-2 font-medium w-8 text-white">Pts</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.map((s, i) => (
-                      <tr key={s.team} className={`border-b border-gray-800/50 ${i < 2 ? 'text-gray-200' : 'text-gray-400'}`}>
-                        <td className="py-1.5">
-                          <span className="mr-1">{getTeamFlag(s.team)}</span>
-                          <span>{s.team}</span>
-                          {qualBadge(i + 1)}
-                        </td>
-                        <td className="text-center">{s.played}</td>
-                        <td className="text-center">{s.won}</td>
-                        <td className="text-center">{s.drawn}</td>
-                        <td className="text-center">{s.lost}</td>
-                        <td className="text-center">{s.gf - s.ga >= 0 ? '+' : ''}{s.gf - s.ga}</td>
-                        <td className="text-center font-bold text-white">{s.pts}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Fixtures */}
-              <div className="border-t border-gray-800 divide-y divide-gray-800/50">
-                {group.matches.map((m, i) => {
-                  const score = m.dbScore ?? (m.score?.ft ?? null)
-                  const hasResult = score !== null
-                  return (
-                    <div key={i} className="px-5 py-2.5 flex items-center gap-3 text-sm">
-                      <span className="text-xs text-gray-600 w-16 shrink-0">
-                        {new Date(m.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                      </span>
-                      <span className="flex-1 text-right text-gray-300">
-                        {getTeamFlag(m.team1)} {m.team1}
-                      </span>
-                      {hasResult ? (
-                        <span className="text-white font-bold w-12 text-center">
-                          {score![0]} – {score![1]}
+      {/* Fixtures by Date */}
+      {sortedDates.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">All Fixtures by Date</h2>
+          {sortedDates.map((date) => {
+            const dayMatches = matchesByDate.get(date)!
+            const label = new Date(date).toLocaleDateString([], {
+              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+            })
+            return (
+              <div key={date}>
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+                  {label} · {dayMatches.length} match{dayMatches.length !== 1 ? 'es' : ''}
+                </div>
+                <div className="bg-gray-900 border border-gray-800 rounded-xl divide-y divide-gray-800">
+                  {dayMatches.map((m, i) => {
+                    const score = m.dbScore ?? (m.score?.ft ?? null)
+                    return (
+                      <div key={i} className="px-4 py-3 flex items-center gap-2 text-sm">
+                        <span className="text-xs text-gray-600 w-16 shrink-0">{m.groupName}</span>
+                        <span className="flex-1 text-right text-gray-200 font-medium">
+                          {getTeamFlag(m.team1)} {m.team1}
                         </span>
-                      ) : (
-                        <span className="text-gray-600 w-12 text-center text-xs">vs</span>
-                      )}
-                      <span className="flex-1 text-gray-300">
-                        {getTeamFlag(m.team2)} {m.team2}
-                      </span>
-                      {m.fixtureId ? (
-                        <Link
-                          href={`/simulations/new?fixture=${m.fixtureId}`}
-                          className="text-xs text-blue-500 hover:text-blue-400 shrink-0"
-                        >
-                          Sim →
-                        </Link>
-                      ) : (
-                        <span className="w-10 shrink-0" />
-                      )}
-                    </div>
-                  )
-                })}
+                        {score ? (
+                          <span className="text-white font-bold w-12 text-center shrink-0">
+                            {score[0]} – {score[1]}
+                          </span>
+                        ) : (
+                          <span className="text-gray-600 w-12 text-center shrink-0 text-xs">vs</span>
+                        )}
+                        <span className="flex-1 text-gray-200 font-medium">
+                          {getTeamFlag(m.team2)} {m.team2}
+                        </span>
+                        {m.fixtureId ? (
+                          <Link
+                            href={`/simulations/new?fixture=${m.fixtureId}`}
+                            className="text-xs text-blue-500 hover:text-blue-400 shrink-0 w-10 text-right"
+                          >
+                            Sim →
+                          </Link>
+                        ) : (
+                          <span className="w-10 shrink-0" />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Group Standings */}
+      {groups.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Group Standings</h2>
+          <div className="grid lg:grid-cols-2 gap-6">
+            {groups.map((group) => {
+              const standings = computeStandings(group.teams, group.matches)
+              return (
+                <div key={group.name} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 bg-gray-800/60">
+                    <h3 className="font-bold text-white">{group.name}</h3>
+                  </div>
+                  <div className="px-5 py-3">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-gray-500 border-b border-gray-800">
+                          <th className="text-left pb-2 font-medium">Team</th>
+                          <th className="text-center pb-2 font-medium w-6">P</th>
+                          <th className="text-center pb-2 font-medium w-6">W</th>
+                          <th className="text-center pb-2 font-medium w-6">D</th>
+                          <th className="text-center pb-2 font-medium w-6">L</th>
+                          <th className="text-center pb-2 font-medium w-10">GD</th>
+                          <th className="text-center pb-2 font-medium w-8 text-white">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.map((s, i) => (
+                          <tr key={s.team} className={`border-b border-gray-800/50 ${i < 2 ? 'text-gray-200' : 'text-gray-400'}`}>
+                            <td className="py-1.5">
+                              <span className="mr-1">{getTeamFlag(s.team)}</span>
+                              {s.team}
+                              {qualBadge(i + 1)}
+                            </td>
+                            <td className="text-center">{s.played}</td>
+                            <td className="text-center">{s.won}</td>
+                            <td className="text-center">{s.drawn}</td>
+                            <td className="text-center">{s.lost}</td>
+                            <td className="text-center">{s.gf - s.ga >= 0 ? '+' : ''}{s.gf - s.ga}</td>
+                            <td className="text-center font-bold text-white">{s.pts}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

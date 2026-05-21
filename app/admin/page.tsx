@@ -37,6 +37,20 @@ export default function AdminPage() {
     }
   }
 
+  async function cleanLeagues() {
+    setLoading(true)
+    setResult(null)
+    try {
+      const res = await fetch('/api/admin/clean-leagues')
+      const data = await res.json()
+      setResult({ status: res.status, data })
+    } catch (e: any) {
+      setResult({ status: 'network error', data: { error: e.message } })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function checkStatus() {
     setLoading(true)
     setResult(null)
@@ -58,6 +72,20 @@ export default function AdminPage() {
       <div>
         <h1 className="text-3xl font-bold">Admin</h1>
         <p className="text-gray-400 mt-1">Database diagnostics &amp; manual sync</p>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">
+        <h2 className="font-semibold">Clean Up Leagues</h2>
+        <p className="text-xs text-gray-500">
+          Removes duplicate and unwanted leagues, keeping only: FIFA World Cup 2026, Premier League 2024/25, UEFA Champions League 2024/25, NBA 2024/25, NFL 2024/25, NHL 2024/25, ICC Cricket World Cup.
+        </p>
+        <button
+          onClick={cleanLeagues}
+          disabled={loading}
+          className="w-full py-2 bg-yellow-700 hover:bg-yellow-600 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors"
+        >
+          {loading ? 'Cleaning…' : '🧹 Clean Leagues'}
+        </button>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 space-y-4">

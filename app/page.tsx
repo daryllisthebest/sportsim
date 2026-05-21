@@ -23,7 +23,9 @@ async function getData() {
   ] = await Promise.all([
     supabase.from('sports').select('*').order('name'),
     supabase.from('leagues').select('*, sports(name)').order('name'),
-    supabase.from('fixtures').select('*').gte('kickoff_at', new Date().toISOString()).order('kickoff_at').limit(5),
+    supabase.from('fixtures')
+      .select('*, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+      .gte('kickoff_at', new Date().toISOString()).order('kickoff_at').limit(5),
     supabase.from('simulations').select('*', { count: 'exact', head: true }),
   ])
 
@@ -107,17 +109,20 @@ export default async function DashboardPage() {
           </div>
           <div className="space-y-2">
             {fixtures.map((f) => (
-              <div
+              <Link
                 key={f.id}
-                className="bg-gray-900 border border-gray-800 rounded-lg px-5 py-3 flex items-center justify-between"
+                href={`/simulations/new?fixture=${f.id}`}
+                className="bg-gray-900 border border-gray-800 rounded-lg px-5 py-3 flex items-center justify-between hover:border-gray-600 transition-colors"
               >
-                <span className="text-sm text-gray-300">Fixture #{f.id}</span>
+                <span className="text-sm text-gray-300">
+                  {f.home_team?.name ?? 'Home'} vs {f.away_team?.name ?? 'Away'}
+                </span>
                 {f.kickoff_at && (
                   <span className="text-sm text-gray-500">
                     {new Date(f.kickoff_at).toLocaleDateString()}
                   </span>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         </div>
