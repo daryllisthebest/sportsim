@@ -232,6 +232,22 @@ export default async function WC2026Page() {
         </div>
       )}
 
+      {/* Amazon affiliate banner */}
+      <div className="bg-gradient-to-r from-yellow-950/60 to-orange-950/60 border border-yellow-800/50 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <div className="font-semibold text-yellow-300 text-lg">⚽ World Cup 2026 Gear</div>
+          <div className="text-sm text-gray-400 mt-1">Shop official kits, balls, and fan merchandise on Amazon</div>
+        </div>
+        <a
+          href="https://amzn.to/3RXfM29"
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="shrink-0 flex items-center gap-2 px-6 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl text-sm transition-colors"
+        >
+          🛒 Shop on Amazon
+        </a>
+      </div>
+
       {/* Group Standings */}
       {groups.length > 0 && (
         <div className="space-y-6">
