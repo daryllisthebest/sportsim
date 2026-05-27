@@ -17,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+                <meta name="google-site-verification" content="tY7ZRfl0ZUFQM-dSa6Av1LJmlK842MQ6jveZrpk3C7Q" />
         <script dangerouslySetInnerHTML={{ __html: `(function(s){s.dataset.zone='11001218',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))` }} />
       </head>
       <body className={`${inter.className} bg-gray-950 text-gray-100 min-h-screen pb-20`}>
