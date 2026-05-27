@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'SportSim',
   description: 'AI-powered sports match simulation',
+    verification: {
+    google: 'tY7ZRfl0ZUFQM-dSa6Av1LJmlK842MQ6jveZrpk3C7Q',
+  },
   other: {
     monetag: 'bced3203c0d31f07fb612f3e49e9569b',
   },
