@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { createServerClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +13,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/simulations`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
   ]
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseUrl.startsWith('http')) return staticPages
+
   try {
-    const { data: fixtures } = await (createServerClient() as any)
+    const supabase = createClient(supabaseUrl, supabaseKey ?? '')
+    const { data: fixtures } = await supabase
       .from('fixtures')
       .select('id, kickoff_at')
       .order('kickoff_at', { ascending: false })
