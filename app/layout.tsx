@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Nav from '@/components/Nav'
+import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           We do not encourage, promote, or facilitate gambling in any form.</p>
           <p>As an Amazon Associate I earn from qualifying purchases.</p>
         </footer>
+        <Analytics />
       </body>
     </html>
   )
