@@ -15,11 +15,14 @@ function runMonteCarlo(runs: number, homeStrength: number, awayStrength: number)
   let homeWins = 0, draws = 0, awayWins = 0
   const results: Array<{ home: number; away: number }> = []
 
-  for (let i = 0; i < runs; i++) {
-    const total = homeStrength + awayStrength
-    const homeExpected = total > 0 ? (homeStrength / total) * 2.5 : 1.25
-    const awayExpected = total > 0 ? (awayStrength / total) * 2.5 : 1.25
+  const total = homeStrength + awayStrength
+  // Bigger strength gap → more total goals (stronger team dominates scoreline)
+  const spread = total > 0 ? Math.abs(homeStrength - awayStrength) / total : 0
+  const totalGoals = total > 0 ? 2.5 + spread * 3.0 : 2.5
+  const homeExpected = total > 0 ? (homeStrength / total) * totalGoals : totalGoals / 2
+  const awayExpected = total > 0 ? (awayStrength / total) * totalGoals : totalGoals / 2
 
+  for (let i = 0; i < runs; i++) {
     // Poisson-approximate using sum of uniforms
     const homeGoals = poissonSample(homeExpected)
     const awayGoals = poissonSample(awayExpected)

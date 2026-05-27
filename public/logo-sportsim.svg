@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#0a0f1e" rx="40"/>
+
+  <!-- Lightning bolt -->
+  <polygon
+    points="220,60 160,210 200,210 180,340 260,180 215,180 245,60"
+    fill="#3B82F6"
+  />
+
+  <!-- SportSim text -->
+  <text
+    x="200"
+    y="375"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="36"
+    font-weight="bold"
+    fill="#ffffff"
+    letter-spacing="2"
+  >SportSim</text>
+</svg>
