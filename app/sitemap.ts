@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { createServerClient } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 const BASE = 'https://sportsim.app'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -11,17 +13,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/simulations`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
   ]
 
-  const { data: fixtures } = await (createServerClient() as any)
-    .from('fixtures')
-    .select('id, kickoff_at')
-    .order('kickoff_at', { ascending: false })
+  try {
+    const { data: fixtures } = await (createServerClient() as any)
+      .from('fixtures')
+      .select('id, kickoff_at')
+      .order('kickoff_at', { ascending: false })
 
-  const fixturePages: MetadataRoute.Sitemap = (fixtures ?? []).map((f: any) => ({
-    url: `${BASE}/fixtures/${f.id}`,
-    lastModified: f.kickoff_at ? new Date(f.kickoff_at) : new Date(),
-    changeFrequency: 'daily' as const,
-    priority: 0.6,
-  }))
+    const fixturePages: MetadataRoute.Sitemap = (fixtures ?? []).map((f: any) => ({
+      url: `${BASE}/fixtures/${f.id}`,
+      lastModified: f.kickoff_at ? new Date(f.kickoff_at) : new Date(),
+      changeFrequency: 'daily' as const,
+      priority: 0.6,
+    }))
 
-  return [...staticPages, ...fixturePages]
+    return [...staticPages, ...fixturePages]
+  } catch {
+    return staticPages
+  }
 }
