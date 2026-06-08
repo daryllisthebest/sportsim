@@ -1,11 +1,20 @@
 import { Fragment } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !url.startsWith('http')) return null
+  return createClient(url, key ?? '')
+}
 import Link from 'next/link'
 import { LeaderboardAd, SidebarAd } from '@/components/AdSlot'
 
 export const dynamic = 'force-dynamic'
 
 async function getFixtures() {
+  const supabase = getSupabase()
+  if (!supabase) return []
   const { data } = await supabase
     .from('fixtures')
     .select(`
