@@ -6,6 +6,8 @@ import { getVerdict } from '@/components/VerdictBadge'
 export const dynamic = 'force-dynamic'
 
 async function getSimulations() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!url || !url.startsWith('http')) return []
   const { data, error } = await (createServerClient() as any)
     .from('simulations')
     .select('*')
