@@ -8,7 +8,7 @@ async function getData() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseUrl.startsWith('http') || !supabaseKey) {
     console.error('[dashboard] Missing Supabase env vars:', { supabaseUrl: !!supabaseUrl, supabaseKey: !!supabaseKey })
     return { sports: [], leagues: [], fixtures: [], simCount: 0 }
   }
