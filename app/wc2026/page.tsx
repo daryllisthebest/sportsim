@@ -64,7 +64,7 @@ async function getGroupData(): Promise<{ groups: GroupData[]; seeded: boolean }>
   const fixtureMap = new Map<string, { id: string; home_score: number | null; away_score: number | null }>()
   let seeded = false
 
-  if (supabaseUrl && supabaseKey) {
+    if (supabaseUrl && supabaseUrl.startsWith('http') && supabaseKey) {
     const supabase = createClient(supabaseUrl, supabaseKey)
     const { data: league } = await supabase
       .from('leagues')
