@@ -3,27 +3,39 @@ import { createClient } from '@supabase/supabase-js'
 const API_HOST = 'v3.football.api-sports.io'
 
 const TARGETS = [
-  { label: 'FIFA World Cup 2022',           apiLeagueId: 1,  season: 2022 },
+  { label: 'FIFA World Cup 2026',           apiLeagueId: 1,  season: 2026 },
   { label: 'UEFA Champions League 2024/25', apiLeagueId: 2,  season: 2024 },
   { label: 'Premier League 2024/25',        apiLeagueId: 39, season: 2024 },
 ]
+
+const NAME_ALIASES: Record<string, string> = {
+  'United States':     'USA',
+  'IR Iran':           'Iran',
+  'Republic of Korea': 'Korea Republic',
+  'South Korea':       'Korea Republic',
+  "Côte d'Ivoire":     'Ivory Coast',
+  'DR Congo':          'Congo DR',
+}
+
+function normalizeName(name: string): string {
+  return NAME_ALIASES[name] ?? name
+}
 
 export interface SyncResult {
   ok: boolean
   startedAt: string
   finishedAt: string
   leagues: Array<{ label: string; teams: number; fixtures: number }>
+  wc2026Patched?: number
   error?: string
 }
 
 function makeSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
-
-// ─── API fetch with 1-hour api_cache ─────────────────────────────────────────
 
 async function apiFetch(
   supabase: ReturnType<typeof makeSupabase>,
@@ -40,9 +52,7 @@ async function apiFetch(
     .eq('cache_key', cacheKey)
     .single()
 
-  if (cached && new Date(cached.expires_at) > new Date()) {
-    return cached.data
-  }
+  if (cached && new Date(cached.expires_at) > new Date()) return cached.data
 
   const res = await fetch(url.toString(), {
     headers: { 'x-apisports-key': process.env.API_FOOTBALL_KEY! },
@@ -54,7 +64,7 @@ async function apiFetch(
     throw new Error(`API-Football error: ${JSON.stringify(json.errors)}`)
   }
 
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+  const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
   await supabase
     .from('api_cache')
     .upsert({ cache_key: cacheKey, data: json, expires_at: expiresAt }, { onConflict: 'cache_key' })
@@ -62,8 +72,6 @@ async function apiFetch(
   await sleep(250)
   return json
 }
-
-// ─── League sync ─────────────────────────────────────────────────────────────
 
 async function ensureFootballSport(supabase: ReturnType<typeof makeSupabase>) {
   const { data } = await supabase.from('sports').select('id').eq('name', 'Football').single()
@@ -84,7 +92,6 @@ async function syncLeague(
   sportId: number,
   target: (typeof TARGETS)[number]
 ): Promise<{ teams: number; fixtures: number }> {
-  // Upsert league
   const { data: leagueRow, error } = await supabase
     .from('leagues')
     .upsert(
@@ -97,7 +104,6 @@ async function syncLeague(
   if (error || !leagueRow) throw new Error(`League upsert failed: ${error?.message}`)
   const leagueDbId = leagueRow.id
 
-  // Teams
   const teamsJson = await apiFetch(supabase, 'teams', { league: target.apiLeagueId, season: target.season })
   const teamsPayload = (teamsJson.response ?? []).map((t: any) => ({
     league_id: leagueDbId,
@@ -113,7 +119,6 @@ async function syncLeague(
     if (teamsErr) console.warn(`[sync] teams upsert warning: ${teamsErr.message}`)
   }
 
-  // Build api_football_id → db id map
   const { data: dbTeams } = await supabase
     .from('teams')
     .select('id, api_football_id')
@@ -124,7 +129,6 @@ async function syncLeague(
     if (t.api_football_id) teamMap.set(t.api_football_id, t.id)
   }
 
-  // Fixtures
   const fixturesJson = await apiFetch(supabase, 'fixtures', { league: target.apiLeagueId, season: target.season })
   const fixturesPayload: any[] = []
 
@@ -152,20 +156,57 @@ async function syncLeague(
     if (fixErr) console.warn(`[sync] fixtures upsert warning: ${fixErr.message}`)
   }
 
-  // Standings → api_cache
-  const standingsJson = await apiFetch(supabase, 'standings', { league: target.apiLeagueId, season: target.season })
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
-  await supabase
-    .from('api_cache')
-    .upsert(
-      { cache_key: `standings:${target.apiLeagueId}:${target.season}`, data: standingsJson, expires_at: expiresAt },
-      { onConflict: 'cache_key' }
-    )
-
   return { teams: teamsPayload.length, fixtures: fixturesPayload.length }
 }
 
-// ─── Public entry point ───────────────────────────────────────────────────────
+async function patchWC2026Scores(supabase: ReturnType<typeof makeSupabase>): Promise<number> {
+  const { data: league } = await supabase
+    .from('leagues')
+    .select('id')
+    .eq('name', 'FIFA World Cup 2026')
+    .single()
+  if (!league) return 0
+
+  const { data: apiFixtures } = await supabase
+    .from('fixtures')
+    .select('home_score, away_score, status, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('league_id', league.id)
+    .not('api_football_id', 'is', null)
+    .not('home_score', 'is', null)
+
+  if (!apiFixtures?.length) return 0
+
+  const { data: seededFixtures } = await supabase
+    .from('fixtures')
+    .select('id, home_team:teams!fixtures_home_team_id_fkey(name), away_team:teams!fixtures_away_team_id_fkey(name)')
+    .eq('league_id', league.id)
+    .is('api_football_id', null)
+
+  const seededMap = new Map<string, string>()
+  for (const f of seededFixtures ?? []) {
+    const h = normalizeName((f as any).home_team?.name ?? '')
+    const a = normalizeName((f as any).away_team?.name ?? '')
+    seededMap.set(`${h}:${a}`, f.id)
+  }
+
+  let patched = 0
+  for (const af of apiFixtures) {
+    const h = normalizeName((af as any).home_team?.name ?? '')
+    const a = normalizeName((af as any).away_team?.name ?? '')
+    const seededId = seededMap.get(`${h}:${a}`)
+    if (!seededId) continue
+
+    await supabase
+      .from('fixtures')
+      .update({ home_score: af.home_score, away_score: af.away_score, status: af.status })
+      .eq('id', seededId)
+
+    patched++
+  }
+
+  console.log(`[sync] WC2026 score patch: ${patched} fixtures updated`)
+  return patched
+}
 
 export async function runSync(): Promise<SyncResult> {
   const startedAt = new Date().toISOString()
@@ -180,7 +221,9 @@ export async function runSync(): Promise<SyncResult> {
     console.log(`[sync] ✓ ${target.label}: ${teams} teams, ${fixtures} fixtures`)
   }
 
-  return { ok: true, startedAt, finishedAt: new Date().toISOString(), leagues: leagueResults }
+  const wc2026Patched = await patchWC2026Scores(supabase)
+
+  return { ok: true, startedAt, finishedAt: new Date().toISOString(), leagues: leagueResults, wc2026Patched }
 }
 
 function sleep(ms: number) {
