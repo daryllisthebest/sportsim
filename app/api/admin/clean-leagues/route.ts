@@ -14,54 +14,61 @@ const TARGET_NAMES = [
 ]
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !url.startsWith('http') || !key) {
+      return NextResponse.json({ error: 'Missing or invalid Supabase env vars', hasUrl: !!url, hasKey: !!key }, { status: 500 })
+    }
 
-  const { data: leagues, error } = await supabase.from('leagues').select('id, name')
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const supabase = createClient(url, key)
 
-  const { data: fixtures } = await supabase.from('fixtures').select('league_id')
-  const countByLeague = new Map<string, number>()
-  for (const f of fixtures ?? []) {
-    if (f.league_id) countByLeague.set(f.league_id, (countByLeague.get(f.league_id) ?? 0) + 1)
-  }
+    const { data: leagues, error } = await supabase.from('leagues').select('id, name')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const deleted: string[] = []
-  const kept: string[] = []
+    const { data: fixtures } = await supabase.from('fixtures').select('league_id')
+    const countByLeague = new Map<string, number>()
+    for (const f of fixtures ?? []) {
+      if (f.league_id) countByLeague.set(f.league_id, (countByLeague.get(f.league_id) ?? 0) + 1)
+    }
 
-  // Deduplicate target leagues — keep the one with the most fixtures
-  for (const name of TARGET_NAMES) {
-    const matching = (leagues ?? []).filter((l) => l.name === name)
-    if (matching.length === 0) { kept.push(`${name} — not found`); continue }
-    if (matching.length === 1) { kept.push(`${name} (${matching[0].id})`); continue }
+    const deleted: string[] = []
+    const kept: string[] = []
 
-    const sorted = [...matching].sort(
-      (a, b) => (countByLeague.get(b.id) ?? 0) - (countByLeague.get(a.id) ?? 0)
-    )
-    const winner = sorted[0]
-    kept.push(`${name} → keeping ${winner.id} (${countByLeague.get(winner.id) ?? 0} fixtures)`)
+    // Deduplicate target leagues — keep the one with the most fixtures
+    for (const name of TARGET_NAMES) {
+      const matching = (leagues ?? []).filter((l) => l.name === name)
+      if (matching.length === 0) { kept.push(`${name} — not found`); continue }
+      if (matching.length === 1) { kept.push(`${name} (${matching[0].id})`); continue }
 
-    for (const loser of sorted.slice(1)) {
-      if ((countByLeague.get(loser.id) ?? 0) > 0) {
-        await supabase.from('fixtures').update({ league_id: winner.id }).eq('league_id', loser.id)
+      const sorted = [...matching].sort(
+        (a, b) => (countByLeague.get(b.id) ?? 0) - (countByLeague.get(a.id) ?? 0)
+      )
+      const winner = sorted[0]
+      kept.push(`${name} → keeping ${winner.id} (${countByLeague.get(winner.id) ?? 0} fixtures)`)
+
+      for (const loser of sorted.slice(1)) {
+        if ((countByLeague.get(loser.id) ?? 0) > 0) {
+          await supabase.from('fixtures').update({ league_id: winner.id }).eq('league_id', loser.id)
+        }
+        await supabase.from('leagues').delete().eq('id', loser.id)
+        deleted.push(`${loser.name} (${loser.id}) — duplicate removed`)
       }
-      await supabase.from('leagues').delete().eq('id', loser.id)
-      deleted.push(`${loser.name} (${loser.id}) — duplicate removed`)
     }
-  }
 
-  // Delete non-target leagues that have no fixtures
-  for (const league of leagues ?? []) {
-    if (TARGET_NAMES.includes(league.name)) continue
-    if ((countByLeague.get(league.id) ?? 0) > 0) {
-      kept.push(`${league.name} (${league.id}) — kept (has fixtures)`)
-    } else {
-      await supabase.from('leagues').delete().eq('id', league.id)
-      deleted.push(`${league.name} (${league.id}) — removed`)
+    // Delete non-target leagues that have no fixtures
+    for (const league of leagues ?? []) {
+      if (TARGET_NAMES.includes(league.name)) continue
+      if ((countByLeague.get(league.id) ?? 0) > 0) {
+        kept.push(`${league.name} (${league.id}) — kept (has fixtures)`)
+      } else {
+        await supabase.from('leagues').delete().eq('id', league.id)
+        deleted.push(`${league.name} (${league.id}) — removed`)
+      }
     }
-  }
 
-  return NextResponse.json({ deleted, kept, deletedCount: deleted.length })
+    return NextResponse.json({ deleted, kept, deletedCount: deleted.length })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
 }
