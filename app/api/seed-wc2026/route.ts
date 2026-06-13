@@ -8,12 +8,15 @@ const DATA_URL =
   'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json'
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (!url || !url.startsWith('http') || !key) {
+      return NextResponse.json({ ok: false, error: 'Missing or invalid Supabase env vars', hasUrl: !!url, hasKey: !!key }, { status: 500 })
+    }
+
+    const supabase = createClient(url, key)
+
     const res = await fetch(DATA_URL)
     if (!res.ok) throw new Error(`Failed to fetch data: ${res.status}`)
     const { matches } = await res.json() as { matches: any[] }
