@@ -42,9 +42,7 @@ function statusBadge(status: string | null) {
   )
 }
 
-export default async function FixturesPage() {
-  const fixtures = (await getFixtures()) as any[]
-
+function FixtureGroups({ groupPrefix, fixtures }: { groupPrefix: string; fixtures: any[] }) {
   const grouped: Record<string, any[]> = {}
   for (const f of fixtures) {
     const key = f.league?.name ?? 'Unknown League'
@@ -53,22 +51,9 @@ export default async function FixturesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Fixtures</h1>
-        <p className="text-gray-400 mt-1">{fixtures.length} matches found</p>
-      </div>
-
-      <LeaderboardAd />
-
-      {fixtures.length === 0 && (
-        <div className="text-center py-20 text-gray-500">
-          No fixtures in the database yet. Add teams and fixtures via Supabase.
-        </div>
-      )}
-
+    <>
       {Object.entries(grouped).map(([leagueName, leagueFixtures], leagueIdx) => (
-        <Fragment key={leagueName}>
+        <Fragment key={`${groupPrefix}-${leagueName}`}>
           {leagueIdx > 0 && leagueIdx % 2 === 0 && <SidebarAd />}
           <div>
             <h2 className="text-lg font-semibold text-gray-300 mb-3">{leagueName}</h2>
@@ -129,6 +114,46 @@ export default async function FixturesPage() {
           </div>
         </Fragment>
       ))}
+    </>
+  )
+}
+
+export default async function FixturesPage() {
+  const fixtures = (await getFixtures()) as any[]
+
+  const upcoming = fixtures.filter((f) => f.home_score === null || f.away_score === null)
+  const results = fixtures
+    .filter((f) => f.home_score !== null && f.away_score !== null)
+    .sort((a, b) => (b.kickoff_at ?? '').localeCompare(a.kickoff_at ?? ''))
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Fixtures</h1>
+        <p className="text-gray-400 mt-1">{fixtures.length} matches found</p>
+      </div>
+
+      <LeaderboardAd />
+
+      {fixtures.length === 0 && (
+        <div className="text-center py-20 text-gray-500">
+          No fixtures in the database yet. Add teams and fixtures via Supabase.
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Upcoming Fixtures</h2>
+          <FixtureGroups groupPrefix="upcoming" fixtures={upcoming} />
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold">Results</h2>
+          <FixtureGroups groupPrefix="results" fixtures={results} />
+        </div>
+      )}
     </div>
   )
 }
